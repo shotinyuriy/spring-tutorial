@@ -1,0 +1,32 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+autoactivate on
+actor User
+participant Filter as Filter
+participant "Authentication\nManager" as AuthenticationManager
+participant "Authentication\nProvider" as AuthenticationProvider
+participant "UserDetails\nService" as UserDetailsService
+User -> Filter : request /important-resource
+Filter -> Filter : make an `Authentication` request
+Filter --> Filter
+Filter -> AuthenticationManager : authenticate(Authentication)
+alt authentication success
+AuthenticationManager x--> Filter : AuthenticationException:\n\t-DisabledException\n\t-LockedException\n\t-BadCredentialsException
+Filter -> AuthenticationEntryPoint : commence(request, response, authException)
+AuthenticationEntryPoint x--> Filter : response with error
+Filter x--> User : response with error
+else
+AuthenticationManager -> AuthenticationProvider : authenticate(Authentication)
+AuthenticationProvider -> UserDetailsService : loadUserByUsername
+UserDetailsService --> AuthenticationProvider : UserDetails
+AuthenticationProvider -> AuthenticationProvider : process UserDetails
+AuthenticationProvider --
+AuthenticationProvider --> AuthenticationManager : **new Authentication(UserDetails)**
+AuthenticationManager --> Filter : Authentication(UserDetails) OK
+Filter --> User : response with success
+end
+
+
+@enduml

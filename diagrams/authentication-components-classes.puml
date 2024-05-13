@@ -1,0 +1,23 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+interface Filter {
+    + void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+}
+
+abstract class GenericFilterBean implements Filter {
+}
+
+interface AuthenticationManager
+interface AuthenticationEntryPoint
+interface AuthenticationFailureHandler
+
+class AuthenticationFilter extends GenericFilterBean {
+
+}
+
+AuthenticationFilter -d-> AuthenticationManager
+AuthenticationFilter -d-> AuthenticationEntryPoint
+AuthenticationFilter -d-> AuthenticationFailureHandler
+
+@enduml

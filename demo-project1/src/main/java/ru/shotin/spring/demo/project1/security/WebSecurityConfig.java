@@ -15,7 +15,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.SupplierJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.security.*;
@@ -27,19 +30,15 @@ import java.util.List;
 @Slf4j
 public class WebSecurityConfig {
 
-    //    @Bean
-//    public SecurityContextRepository bearerTokenSecurityContextRepository() {
-//        log.info("bearerTokenSecurityContextRepository()");
-//        return new CustomBearerTokenSecurityContextRepository();
-//    }
-//
     @Bean
     public JwtDecoder jwtDecoder() throws NoSuchAlgorithmException {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         KeyPair rsaKeyPair = generator.generateKeyPair();
-        PublicKey publicKey = rsaKeyPair.getPublic();
+//        PublicKey publicKey = rsaKeyPair.getPublic();
+        PublicKey publicKey = null;
         if (publicKey instanceof RSAPublicKey rsaPublicKey) {
-            return NimbusJwtDecoder.withPublicKey(rsaPublicKey)
+            return NimbusJwtDecoder
+                    .withPublicKey(rsaPublicKey)
                     .jwtProcessorCustomizer(jwtCustomizer -> {
                         jwtCustomizer.setJWSKeySelector(new JWSKeySelector<SecurityContext>() {
                             @Override
@@ -50,61 +49,33 @@ public class WebSecurityConfig {
                         });
                     }).build();
         } else {
-            throw new IllegalStateException("publicKey is not RSA. publicKey.class=" + publicKey.getClass());
+            return new CustomJwtDecoder();
         }
     }
-//
-//    @Bean
-//    public AuthenticationProvider bearerTokenAuthenticationProvider(JwtDecoder jwtDecoder) {
-//        log.info("bearerTokenAuthenticationProvider()");
-//        return new JwtAuthenticationProvider(jwtDecoder);
-//    }
-//
-//    @Bean
-//    public AuthenticationManager jwtAuthenticationManager(AuthenticationProvider bearerTokenAuthenticationProvider) {
-//        log.info("jwtAuthenticationManager()");
-//        return new ProviderManager(bearerTokenAuthenticationProvider);
-//    }
-//
-//    @Bean
-//    public GenericFilterBean jwtValidationFilter(AuthenticationManager jwtAuthenticationManager) {
-//        log.info("jwtValidationFilter()");
-//        return new BearerTokenAuthenticationFilter(jwtAuthenticationManager);
-//    }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
+    public AuthenticationEntryPoint customJwtAuthenticationEntryPoint() {
+        var entryPoint = new CustomAuthenticationEntryPoint();
+        return entryPoint;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder,
+                                                   AuthenticationEntryPoint customJwtAuthenticationEntryPoint) throws Exception {
         log.info("securityFilterChain()");
 
         http
                 .authorizeRequests(authConfig -> authConfig
                         .antMatchers("/api/currency/v1/**").authenticated()
                         .anyRequest().permitAll())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt().decoder(jwtDecoder).jwtAuthenticationConverter(jwt -> {
-                    log.info("jwt={}", jwt);
-                    return new JwtAuthenticationToken(jwt, List.of());
-                }))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(customJwtAuthenticationEntryPoint)
+                        .jwt().decoder(jwtDecoder)
+                )
                 // Possibly more configuration ...
                 .formLogin().disable() // enable form based log in
                 // set permitAll for all URLs associated with Form Login
                 .httpBasic().disable();
         return http.build();
     }
-
-//    @Bean
-//    public UserDetailsService userDetailsService() {
-//        UserDetails user = User.withDefaultPasswordEncoder()
-//                .username("user")
-//                .password("password")
-//                .passwordEncoder(pwd -> Base64.getEncoder().encodeToString(pwd.getBytes(StandardCharsets.UTF_8)))
-//                .roles("USER")
-//                .build();
-//        UserDetails admin = User.withDefaultPasswordEncoder()
-//                .username("admin")
-//                .password("password")
-//                .passwordEncoder(pwd -> Base64.getEncoder().encodeToString(pwd.getBytes(StandardCharsets.UTF_8)))
-//                .roles("ADMIN", "USER")
-//                .build();
-//        return new InMemoryUserDetailsManager(user, admin);
-//    }
 }

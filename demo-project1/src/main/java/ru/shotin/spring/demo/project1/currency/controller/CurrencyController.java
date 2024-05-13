@@ -23,6 +23,7 @@ public class CurrencyController {
 
     {
         conversionRates.put(new ConversionKey("RUB", "USD"), 95.0);
+        conversionRates.put(new ConversionKey("RUB", "EUR"), 105.0);
     }
 
     @GetMapping("/conversion")
