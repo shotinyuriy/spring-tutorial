@@ -13,7 +13,7 @@ services:
     networks:
       - app-tier
     environment:
-      - ETCD_ROOT_PASSWORD=3tcd_R00t_Passw0rd
+#      - ETCD_ROOT_PASSWORD=3tcd_R00t_Passw0rd
       - ALLOW_NONE_AUTHENTICATION=yes
       - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
 volumes:
