@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
-import java.util.Objects;
 
 public class CustomJwtDecoder implements JwtDecoder {
     ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
@@ -31,12 +30,14 @@ public class CustomJwtDecoder implements JwtDecoder {
             base64Header = Base64.getUrlDecoder().decode(base64Parts[0]);
             base64Claims = Base64.getUrlDecoder().decode(base64Parts[1]);
             base64Signature = Base64.getUrlDecoder().decode(base64Parts[2]);
-
+            if (base64Signature == null || base64Signature.length < 1) {
+                throw new IllegalArgumentException("JWT digital signature is required");
+            }
             Map<String, Object> jwtHeaders = objectMapper.readValue(base64Header, Map.class);
             Map<String, Object> jwtClaims = objectMapper.readValue(base64Claims, Map.class);
             Object iat = jwtClaims.get(JwtClaimNames.IAT);
             Object exp = jwtClaims.get(JwtClaimNames.EXP);
-//            Map jwtSignature = objectMapper.readValue(base64Signature, Map.class);
+
             Jwt jwt = new Jwt(token, convertToInstant(iat), convertToInstant(exp), jwtHeaders, jwtClaims);
             return jwt;
         } catch (JsonMappingException e) {
