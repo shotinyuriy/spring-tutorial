@@ -13,9 +13,32 @@ services:
     networks:
       - app-tier
     environment:
-#      - ETCD_ROOT_PASSWORD=3tcd_R00t_Passw0rd
+      - ETCD_LOG_LEVEL=info
       - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
       - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    volumes:
+      - ./cert:/opt/bitnami/etcd/cert
+  Etcd2:
+    image: 'bitnami/etcd:3.5.13'
+    ports:
+      - "2389:2379"
+      - "2390:2380"
+    networks:
+      - app-tier
+    environment:
+      - ETCD_LOG_LEVEL=info
+      - ALLOW_NONE_AUTHENTICATION=no
+      - ETCD_ROOT_PASSWORD=3tcd_R00t_Passw0rd
+      - ETCD_LISTEN_CLIENT_URLS=https://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=https://etcd:2379
+      - ETCD_AUTO_TLS=false
+      - ETCD_TRUSTED_CA_FILE=/opt/bitnami/etcd/cert/intermediate_ca_chain_cert.pem
+#      - ETCD_TRUSTED_CA_FILE=/opt/bitnami/etcd/cert/client_cert_chain.pem
+      - ETCD_CERT_FILE=/opt/bitnami/etcd/cert/server_cert.pem
+      - ETCD_KEY_FILE=/opt/bitnami/etcd/cert/server_key.pem
+    volumes:
+      - ./cert:/opt/bitnami/etcd/cert
 volumes:
   etcd-data:
     driver: flocker

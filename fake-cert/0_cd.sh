@@ -1,0 +1,1 @@
+cd /d/git/cotc/cotc-restemulator/fake-cert
