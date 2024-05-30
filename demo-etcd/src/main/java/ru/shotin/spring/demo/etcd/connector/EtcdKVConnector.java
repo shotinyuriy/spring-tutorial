@@ -29,14 +29,14 @@ public class EtcdKVConnector {
 
     private Client client = null;
 
-    private String sharedKey = "sharedKey";
+    private String sharedKey = "si-1680-consumer-expected-source";
 
     @PostConstruct
     public void tarantoolFlag() {
         etcdClient().ifPresent(etcdClient -> {
             try {
                 KV kvClient = etcdClient.getKVClient();
-                ByteSequence key = ByteSequence.from("si-1680-consumer-expected-source".getBytes());
+                ByteSequence key = ByteSequence.from(sharedKey.getBytes());
                 ByteSequence value = ByteSequence.from("primary".getBytes());
                 CompletableFuture<PutResponse> putResponseFuture = kvClient.put(key, value);
                 PutResponse putResponse = putResponseFuture.get(etcdRequestTimeout, TimeUnit.MILLISECONDS); // TimeOut settings are required to avoid hanging
@@ -56,20 +56,30 @@ public class EtcdKVConnector {
         });
     }
 
-    @Scheduled(initialDelay = 2000, fixedDelay = 2000)
+    @Scheduled(initialDelay = 10000, fixedDelay = 10000)
     public void workWithEtcdKvClient() {
         etcdClient().ifPresent(etcdClient -> {
             try {
                 KV kvClient = etcdClient.getKVClient();
                 ByteSequence key = ByteSequence.from(sharedKey.getBytes());
-                ByteSequence value = ByteSequence.from(new UUID(System.currentTimeMillis() % 255, System.nanoTime() % 255).toString().getBytes());
-                CompletableFuture<PutResponse> putResponseFuture = kvClient.put(key, value);
-                PutResponse putResponse = putResponseFuture.get(etcdRequestTimeout, TimeUnit.MILLISECONDS); // TimeOut settings are required to avoid hanging
-                log.debug("putResponse={}", putResponse);
+
                 CompletableFuture<GetResponse> getResponseFuture = kvClient.get(key);
                 GetResponse getResponse = getResponseFuture.get(etcdRequestTimeout, TimeUnit.MILLISECONDS); // TimeOut settings are required to avoid hanging
                 log.debug("getResponse={}", getResponse);
-
+                if (getResponse.getCount() > 0) {
+                    String value = new String(getResponse.getKvs().get(0).getValue().getBytes());
+                    String newValue;
+                    if ("primary".equals(value)) {
+                        newValue = "stand-in";
+                    } else {
+                        newValue = "primary";
+                    }
+                    log.info("newValue={}", newValue);
+                    ByteSequence newValueBytes = ByteSequence.from(value.getBytes());
+                    CompletableFuture<PutResponse> putResponseFuture = kvClient.put(key, newValueBytes);
+                    PutResponse putResponse = putResponseFuture.get(etcdRequestTimeout, TimeUnit.MILLISECONDS); // TimeOut settings are required to avoid hanging
+                    log.debug("putResponse={}", putResponse);
+                }
             } catch (InterruptedException ex) {
                 log.error("workWithEtcdKvClient() Failed working with etcdClient", ex);
                 Thread.currentThread().interrupt();
@@ -81,7 +91,7 @@ public class EtcdKVConnector {
         });
     }
 
-    @Scheduled(initialDelay = 6000, fixedDelay = 10000)
+//    @Scheduled(initialDelay = 6000, fixedDelay = 10000)
     public void workWithEtcdKvDelete() {
         etcdClient().ifPresent(etcdClient -> {
             try {
