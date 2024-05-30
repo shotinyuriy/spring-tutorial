@@ -22,14 +22,39 @@ import java.util.concurrent.TimeoutException;
 
 @Component
 @Slf4j
-public class EtcdConnector {
-    private String etcdEndpoints = "http://localhost:2379";
+public class EtcdKVConnector {
+    private String etcdEndpoints = EtcdConfig.ETCD_HOST;
     private String certBasePath = "E:\\git\\spring-tutorial\\demo-etcd\\src\\main\\resources\\cert\\";
     private long etcdRequestTimeout = 10000;
 
     private Client client = null;
 
-    private String sharedKey = "test_key";
+    private String sharedKey = "sharedKey";
+
+    @PostConstruct
+    public void tarantoolFlag() {
+        etcdClient().ifPresent(etcdClient -> {
+            try {
+                KV kvClient = etcdClient.getKVClient();
+                ByteSequence key = ByteSequence.from("si-1680-consumer-expected-source".getBytes());
+                ByteSequence value = ByteSequence.from("primary".getBytes());
+                CompletableFuture<PutResponse> putResponseFuture = kvClient.put(key, value);
+                PutResponse putResponse = putResponseFuture.get(etcdRequestTimeout, TimeUnit.MILLISECONDS); // TimeOut settings are required to avoid hanging
+                log.info("putResponse={}", putResponse);
+                CompletableFuture<GetResponse> getResponseFuture = kvClient.get(key);
+                GetResponse getResponse = getResponseFuture.get(etcdRequestTimeout, TimeUnit.MILLISECONDS); // TimeOut settings are required to avoid hanging
+                log.info("getResponse={}", getResponse);
+
+            } catch (InterruptedException ex) {
+                log.error("workWithEtcdKvClient() Failed working with etcdClient", ex);
+                Thread.currentThread().interrupt();
+            } catch (ExecutionException | TimeoutException ex) {
+                log.error("workWithEtcdKvClient() Failed working asynchronously with etcdClient", ex);
+            } catch (RuntimeException ex) {
+                log.error("workWithEtcdKvClient() Failed working with etcdClient", ex);
+            }
+        });
+    }
 
     @Scheduled(initialDelay = 2000, fixedDelay = 2000)
     public void workWithEtcdKvClient() {
@@ -72,25 +97,6 @@ public class EtcdConnector {
                 log.error("workWithEtcdKvDelete() Failed working asynchronously with etcdClient", ex);
             } catch (RuntimeException ex) {
                 log.error("workWithEtcdKvDelete() Failed working with etcdClient", ex);
-            }
-        });
-    }
-
-    @PostConstruct
-    public void workWithEtcdWatchClient() {
-        etcdClient().ifPresent(etcdClient -> {
-            try {
-                Watch watchClient = etcdClient.getWatchClient();
-                ByteSequence key = ByteSequence.from(sharedKey.getBytes());
-                watchClient.watch(key,
-                        watchResponse -> {
-                            log.info("watchResponse={}", watchResponse);
-                        },
-                        throwable -> {
-                            log.error("watchError=", throwable.toString());
-                        });
-            } catch (RuntimeException ex) {
-                log.error("workWithEtcdWatchClient() Failed working with etcdClient", ex);
             }
         });
     }
